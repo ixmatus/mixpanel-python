@@ -1,8 +1,8 @@
 import base64
 import json
 import time
-import urllib
-import urllib2
+import urllib.parse
+import urllib3
 
 '''
 The mixpanel package allows you to easily track events and
@@ -17,7 +17,9 @@ customize the IO characteristics of their tracking.
 
 VERSION = '3.0.0'
 
+
 class Mixpanel(object):
+
     '''
     Use instances of Mixpanel to track events and send Mixpanel
     profile updates from your python code.
@@ -33,8 +35,10 @@ class Mixpanel(object):
         provided, Mixpanel will use the default Consumer, which
         communicates one synchronous request for every message.
         """
+
         self._token = token
         self._consumer = consumer or Consumer()
+        self.http = urllib3.PoolManager()
 
     def _now(self):
         return time.time()
@@ -58,7 +62,7 @@ class Mixpanel(object):
           })
         """
         all_properties = {
-            'token' : self._token,
+            'token': self._token,
             'distinct_id': distinct_id,
             'time': int(self._now()),
             'mp_lib': 'python',
@@ -228,7 +232,9 @@ class Mixpanel(object):
         record.update(meta)
         self._consumer.send('people', json.dumps(record))
 
+
 class MixpanelException(Exception):
+
     '''
     MixpanelExceptions will be thrown if the server can't recieve
     our events or updates for some reason- for example, if we can't
@@ -236,12 +242,15 @@ class MixpanelException(Exception):
     '''
     pass
 
+
 class Consumer(object):
+
     '''
     The simple consumer sends an HTTP request directly to the Mixpanel service,
     with one request for every call. This is the default consumer for Mixpanel
     objects- if you don't provide your own, you get one of these.
     '''
+
     def __init__(self, events_url=None, people_url=None):
         self._endpoints = {
             'events': events_url or 'https://api.mixpanel.com/track',
@@ -267,31 +276,36 @@ class Consumer(object):
         if endpoint in self._endpoints:
             self._write_request(self._endpoints[endpoint], json_message)
         else:
-            raise MixpanelException('No such endpoint "{0}". Valid endpoints are one of {1}'.format(self._endpoints.keys()))
+            raise MixpanelException(
+                'No such endpoint "{0}". Valid endpoints are one of {1}'.format(self._endpoints.keys()))
 
     def _write_request(self, request_url, json_message):
-        data = urllib.urlencode({
+        data = urllib.parse.urlencode({
             'data': base64.b64encode(json_message),
-            'verbose':1,
-            'ip':0,
+            'verbose': 1,
+            'ip': 0,
         })
         try:
-            request = urllib2.Request(request_url, data)
-            response = urllib2.urlopen(request).read()
-        except urllib2.HTTPError as e:
+            req = self.http.request("POST", request_url, data)
+            response = req.data
+        except urllib3.exceptions.HTTPError as e:
             raise MixpanelException(e)
 
         try:
             response = json.loads(response)
         except ValueError:
-            raise MixpanelException('Cannot interpret Mixpanel server response: {0}'.format(response))
+            raise MixpanelException(
+                'Cannot interpret Mixpanel server response: {0}'.format(response))
 
         if response['status'] != 1:
-            raise MixpanelException('Mixpanel error: {0}'.format(response['error']))
+            raise MixpanelException(
+                'Mixpanel error: {0}'.format(response['error']))
 
         return True
 
+
 class BufferedConsumer(object):
+
     '''
     BufferedConsumer works just like Consumer, but holds messages in
     memory and sends them in batches. This can save bandwidth and
@@ -301,6 +315,7 @@ class BufferedConsumer(object):
     when you're sure you're done sending them. calls to flush() will
     send all remaining unsent events being held by the BufferedConsumer.
     '''
+
     def __init__(self, max_size=50, events_url=None, people_url=None):
         self._consumer = Consumer(events_url, people_url)
         self._buffers = {
@@ -326,7 +341,8 @@ class BufferedConsumer(object):
         :raises: MixpanelException
         '''
         if endpoint not in self._buffers:
-            raise MixpanelException('No such endpoint "{0}". Valid endpoints are one of {1}'.format(self._buffers.keys()))
+            raise MixpanelException(
+                'No such endpoint "{0}". Valid endpoints are one of {1}'.format(self._buffers.keys()))
 
         buf = self._buffers[endpoint]
         buf.append(json_message)
