@@ -38,7 +38,6 @@ class Mixpanel(object):
 
         self._token = token
         self._consumer = consumer or Consumer()
-        self.http = urllib3.PoolManager()
 
     def _now(self):
         return time.time()
@@ -256,6 +255,7 @@ class Consumer(object):
             'events': events_url or 'https://api.mixpanel.com/track',
             'people': people_url or 'https://api.mixpanel.com/engage',
         }
+        self.http = urllib3.PoolManager()
 
     def send(self, endpoint, json_message):
         '''
@@ -281,7 +281,7 @@ class Consumer(object):
 
     def _write_request(self, request_url, json_message):
         data = urllib.parse.urlencode({
-            'data': base64.b64encode(json_message),
+            'data': base64.b64encode(json_message.encode()),
             'verbose': 1,
             'ip': 0,
         })
