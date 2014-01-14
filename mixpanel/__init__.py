@@ -280,19 +280,20 @@ class Consumer(object):
                 'No such endpoint "{0}". Valid endpoints are one of {1}'.format(self._endpoints.keys()))
 
     def _write_request(self, request_url, json_message):
-        data = urllib.parse.urlencode({
+        data = {
             'data': base64.b64encode(json_message.encode()),
             'verbose': 1,
             'ip': 0,
-        })
+        }
         try:
-            req = self.http.request("POST", request_url, data)
+            req = self.http.request("GET", request_url, data, headers={
+                                    "Content-Type": "application/x-www-form-urlencoded"})
             response = req.data
         except urllib3.exceptions.HTTPError as e:
             raise MixpanelException(e)
 
         try:
-            response = json.loads(response)
+            response = json.loads(response.decode())
         except ValueError:
             raise MixpanelException(
                 'Cannot interpret Mixpanel server response: {0}'.format(response))
