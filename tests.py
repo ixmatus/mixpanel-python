@@ -3,11 +3,11 @@ import base64
 import contextlib
 import json
 import unittest
-import urlparse
+import urllib.parse
 try:
     from mock import Mock, patch
 except ImportError:
-    print 'mixpanel-python requires the mock package to run the test suite'
+    print('mixpanel-python requires the mock package to run the test suite')
     raise
 
 import mixpanel
@@ -236,7 +236,7 @@ class BufferedConsumerTestCase(unittest.TestCase):
 
     def test_buffer_fills_up(self):
         with patch('urllib2.urlopen', return_value = self.mock) as urlopen:
-            for i in xrange(self.MAX_LENGTH - 1):
+            for i in range(self.MAX_LENGTH - 1):
                 self.consumer.send('events', '"Event"')
                 self.assertTrue(not self.mock.called)
 
@@ -263,7 +263,7 @@ class FunctionalTestCase(unittest.TestCase):
             self.assertEqual(urlopen.call_count, 1)
             ((request,),_) = urlopen.call_args
             self.assertEqual(request.get_full_url(), expect_url)
-            data = urlparse.parse_qs(request.get_data())
+            data = urllib.parse.parse_qs(request.get_data())
             self.assertEqual(len(data['data']), 1)
             payload_encoded = data['data'][0]
             payload_json = base64.b64decode(payload_encoded)
@@ -273,12 +273,12 @@ class FunctionalTestCase(unittest.TestCase):
     def test_track_functional(self):
         # XXX this includes $lib_version, which means the test breaks
         # every time we release.
-        expect_data = {u'event': {u'color': u'blue', u'size': u'big'}, u'properties': {u'mp_lib': u'python', u'token': u'12345', u'distinct_id': u'button press', u'$lib_version': unicode(mixpanel.VERSION), u'time': 1000}}
+        expect_data = {'event': {'color': 'blue', 'size': 'big'}, 'properties': {'mp_lib': 'python', 'token': '12345', 'distinct_id': 'button press', '$lib_version': str(mixpanel.VERSION), 'time': 1000}}
         with self._assertRequested('https://api.mixpanel.com/track', expect_data):
             self.mp.track('button press', {'size': 'big', 'color': 'blue'})
 
     def test_people_set_functional(self):
-        expect_data = {u'$distinct_id': u'amq', u'$set': {u'birth month': u'october', u'favorite color': u'purple'}, u'$time': 1000000, u'$token': u'12345'}
+        expect_data = {'$distinct_id': 'amq', '$set': {'birth month': 'october', 'favorite color': 'purple'}, '$time': 1000000, '$token': '12345'}
         with self._assertRequested('https://api.mixpanel.com/engage', expect_data):
              self.mp.people_set('amq', {'birth month': 'october', 'favorite color': 'purple'})
 
